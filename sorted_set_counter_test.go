@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestCounterStrategy_Run(t *testing.T) {
+func TestSortedSetCounterStrategy_Run(t *testing.T) {
 	tt := []struct {
 		name       string
 		runs       int64
@@ -56,8 +56,8 @@ func TestCounterStrategy_Run(t *testing.T) {
 			},
 			lastResult: &Result{
 				State:         Allow,
-				TotalRequests: 40,
-				ExpiresAt:     time.Date(2020, time.March, 25, 10, 17, 30, 0, time.UTC),
+				TotalRequests: 60,
+				ExpiresAt:     time.Date(2020, time.March, 25, 10, 18, 9, 0, time.UTC),
 			},
 			runs:    100,
 			advance: time.Second,
@@ -70,13 +70,13 @@ func TestCounterStrategy_Run(t *testing.T) {
 			require.NoError(t, err)
 			defer server.Close()
 
+			now := time.Date(2020, 3, 25, 10, 15, 30, 0, time.UTC)
+
 			client := redis.NewClient(&redis.Options{
 				Addr: server.Addr(),
 			})
 
-			now := time.Date(2020, 3, 25, 10, 15, 30, 0, time.UTC)
-
-			counter := NewCounterStrategy(client, func() time.Time {
+			counter := NewSortedSetCounterStrategy(client, func() time.Time {
 				return now
 			})
 			var lastResult *Result

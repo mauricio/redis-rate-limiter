@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/alicebob/miniredis/v2 v2.15.1
 	github.com/go-redis/redis/v8 v8.11.3
+	github.com/google/uuid v1.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 )
