@@ -42,7 +42,7 @@ func TestSortedSetCounterStrategy_Run(t *testing.T) {
 			},
 			lastResult: &Result{
 				State:         Deny,
-				TotalRequests: 101,
+				TotalRequests: 100,
 				ExpiresAt:     time.Date(2020, time.March, 25, 10, 16, 30, 0, time.UTC),
 			},
 			runs: 101,
@@ -75,6 +75,7 @@ func TestSortedSetCounterStrategy_Run(t *testing.T) {
 			client := redis.NewClient(&redis.Options{
 				Addr: server.Addr(),
 			})
+			defer client.Close()
 
 			counter := NewSortedSetCounterStrategy(client, func() time.Time {
 				return now

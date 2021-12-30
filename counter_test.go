@@ -42,7 +42,7 @@ func TestCounterStrategy_Run(t *testing.T) {
 			},
 			lastResult: &Result{
 				State:         Deny,
-				TotalRequests: 101,
+				TotalRequests: 100,
 				ExpiresAt:     time.Date(2020, time.March, 25, 10, 16, 30, 0, time.UTC),
 			},
 			runs: 101,
@@ -56,8 +56,8 @@ func TestCounterStrategy_Run(t *testing.T) {
 			},
 			lastResult: &Result{
 				State:         Allow,
-				TotalRequests: 40,
-				ExpiresAt:     time.Date(2020, time.March, 25, 10, 17, 30, 0, time.UTC),
+				TotalRequests: 39,
+				ExpiresAt:     time.Date(2020, time.March, 25, 10, 17, 32, 0, time.UTC),
 			},
 			runs:    100,
 			advance: time.Second,
@@ -73,6 +73,7 @@ func TestCounterStrategy_Run(t *testing.T) {
 			client := redis.NewClient(&redis.Options{
 				Addr: server.Addr(),
 			})
+			defer client.Close()
 
 			now := time.Date(2020, 3, 25, 10, 15, 30, 0, time.UTC)
 

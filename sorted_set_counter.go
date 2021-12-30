@@ -13,6 +13,11 @@ var (
 	_ Strategy = &sortedSetCounter{}
 )
 
+const (
+	sortedSetMax = "+inf"
+	sortedSetMin = "-inf"
+)
+
 func NewSortedSetCounterStrategy(client *redis.Client, now func() time.Time) Strategy {
 	return &sortedSetCounter{
 		client: client,
@@ -35,10 +40,26 @@ type sortedSetCounter struct {
 // bursts of traffic as the counter won't ever expire.
 func (s *sortedSetCounter) Run(ctx context.Context, r *Request) (*Result, error) {
 	now := s.now()
+	expiresAt := now.Add(r.Duration)
+	minimum := now.Add(-r.Duration)
+
+	// first count how many requests over the period we're tracking on this rolling window so check wether
+	// we're already over the limit or not. this prevents new requests from being added if a client is already
+	// rate limited, not allowing it to add an infinite amount of requests to the system overloading redis.
+	// if the client continues to send requests it also means that the memory for this specific key will not
+	// be reclaimed (as we're not writing data here) so make sure there is an eviction policy that will
+	// clear up the memory if the redis starts to get close to its memory limit.
+	result, err := s.client.ZCount(ctx, r.Key, strconv.FormatInt(minimum.UnixMilli(), 10), sortedSetMax).Uint64()
+	if err == nil && result >= r.Limit {
+		return &Result{
+			State:         Deny,
+			TotalRequests: result,
+			ExpiresAt:     expiresAt,
+		}, nil
+	}
+
 	// every request needs an UUID
 	item := uuid.New()
-
-	minimum := now.Add(-r.Duration)
 
 	p := s.client.Pipeline()
 
@@ -52,7 +73,7 @@ func (s *sortedSetCounter) Run(ctx context.Context, r *Request) (*Result, error)
 	})
 
 	// count how many non-expired requests we have on the sorted set
-	count := p.ZCount(ctx, r.Key, "-inf", "+inf")
+	count := p.ZCount(ctx, r.Key, sortedSetMin, sortedSetMax)
 
 	if _, err := p.Exec(ctx); err != nil {
 		return nil, errors.Wrapf(err, "failed to execute sorted set pipeline for key: %v", r.Key)
@@ -71,7 +92,6 @@ func (s *sortedSetCounter) Run(ctx context.Context, r *Request) (*Result, error)
 		return nil, errors.Wrapf(err, "failed to count items for key %v", r.Key)
 	}
 
-	expiresAt := now.Add(r.Duration)
 	requests := uint64(totalRequests)
 
 	if requests > r.Limit {
